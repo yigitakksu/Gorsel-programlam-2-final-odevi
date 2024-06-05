@@ -1,0 +1,249 @@
+airline_reservation/
+├── app.py
+├── templates/
+│   ├── index.html
+│   ├── ucak_formu.html
+│   ├── lokasyon_formu.html
+│   ├── rezervasyon_formu.html
+│   └── layout.html
+├── static/
+│   ├── styles.css
+│   └── script.js
+└── airline.db
+-- airline.db (SQLITE VERİTABANI)
+
+CREATE TABLE Ucak (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT,
+    marka TEXT,
+    seri_no TEXT,
+    koltuk_kapasitesi INTEGER
+);
+
+CREATE TABLE Lokasyon (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ulke TEXT,
+    sehir TEXT,
+    havaalani TEXT,
+    aktif BOOLEAN
+);
+
+CREATE TABLE Rezervasyon (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ucak_id INTEGER,
+    lokasyon_id INTEGER,
+    musteri_adi TEXT,
+    musteri_soyadi TEXT,
+    koltuk_no TEXT,
+    FOREIGN KEY (ucak_id) REFERENCES Ucak (id),
+    FOREIGN KEY (lokasyon_id) REFERENCES Lokasyon (id)
+);
+from flask import Flask, render_template, request, redirect, url_for
+import sqlite3
+
+app = Flask(_name_)
+
+def get_db_connection():
+    conn = sqlite3.connect('airline.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/ucak_formu', methods=('GET', 'POST'))
+def ucak_formu():
+    if request.method == 'POST':
+        model = request.form['model']
+        marka = request.form['marka']
+        seri_no = request.form['seri_no']
+        koltuk_kapasitesi = request.form['koltuk_kapasitesi']
+        
+        conn = get_db_connection()
+        conn.execute('INSERT INTO Ucak (model, marka, seri_no, koltuk_kapasitesi) VALUES (?, ?, ?, ?)',
+                     (model, marka, seri_no, koltuk_kapasitesi))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('index'))
+
+    return render_template('ucak_formu.html')
+
+@app.route('/lokasyon_formu', methods=('GET', 'POST'))
+def lokasyon_formu():
+    if request.method == 'POST':
+        ulke = request.form['ulke']
+        sehir = request.form['sehir']
+        havaalani = request.form['havaalani']
+        aktif = request.form['aktif']
+        
+        conn = get_db_connection()
+        conn.execute('INSERT INTO Lokasyon (ulke, sehir, havaalani, aktif) VALUES (?, ?, ?, ?)',
+                     (ulke, sehir, havaalani, aktif))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('index'))
+
+    return render_template('lokasyon_formu.html')
+
+@app.route('/rezervasyon_formu', methods=('GET', 'POST'))
+def rezervasyon_formu():
+    conn = get_db_connection()
+    ucaklar = conn.execute('SELECT * FROM Ucak').fetchall()
+    lokasyonlar = conn.execute('SELECT * FROM Lokasyon').fetchall()
+    rezervasyonlar = conn.execute('SELECT * FROM Rezervasyon').fetchall()
+    conn.close()
+    
+    if request.method == 'POST':
+        ucak_id = request.form['ucak_id']
+        lokasyon_id = request.form['lokasyon_id']
+        musteri_adi = request.form['musteri_adi']
+        musteri_soyadi = request.form['musteri_soyadi']
+        koltuk_no = request.form['koltuk_no']
+        
+        conn = get_db_connection()
+        conn.execute('INSERT INTO Rezervasyon (ucak_id, lokasyon_id, musteri_adi, musteri_soyadi, koltuk_no) VALUES (?, ?, ?, ?, ?)',
+                     (ucak_id, lokasyon_id, musteri_adi, musteri_soyadi, koltuk_no))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('index'))
+
+    return render_template('rezervasyon_formu.html', ucaklar=ucaklar, lokasyonlar=lokasyonlar, rezervasyonlar=rezervasyonlar)
+
+if _name_ == '_main_':
+    app.run(debug=True)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Havayolu Rezervasyon Sistemi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Havayolu Rezervasyon Sistemi</h1>
+        <nav>
+            <a href="{{ url_for('index') }}">Ana Sayfa</a>
+            <a href="{{ url_for('ucak_formu') }}">Uçak Formu</a>
+            <a href="{{ url_for('lokasyon_formu') }}">Lokasyon Formu</a>
+            <a href="{{ url_for('rezervasyon_formu') }}">Rezervasyon Formu</a>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
+{% extends 'layout.html' %}
+{% block content %}
+    <h2>Ana Sayfa</h2>
+    <p>Havayolu Rezervasyon Sistemine Hoşgeldiniz!</p>
+{% endblock %}
+{% extends 'layout.html' %}
+{% block content %}
+    <h2>Uçak Formu</h2>
+    <form method="post">
+        <label for="model">Model:</label>
+        <input type="text" id="model" name="model" required>
+        <label for="marka">Marka:</label>
+        <input type="text" id="marka" name="marka" required>
+        <label for="seri_no">Seri No:</label>
+        <input type="text" id="seri_no" name="seri_no" required>
+        <label for="koltuk_kapasitesi">Koltuk Kapasitesi:</label>
+        <input type="number" id="koltuk_kapasitesi" name="koltuk_kapasitesi" required>
+        <button type="submit">Kaydet</button>
+    </form>
+{% endblock %}
+{% extends 'layout.html' %}
+{% block content %}
+    <h2>Lokasyon Formu</h2>
+    <form method="post">
+        <label for="ulke">Ülke:</label>
+        <input type="text" id="ulke" name="ulke" required>
+        <label for="sehir">Şehir:</label>
+        <input type="text" id="sehir" name="sehir" required>
+        <label for="havaalani">Havaalanı:</label>
+        <input type="text" id="havaalani" name="havaalani" required>
+        <label for="aktif">Aktif:</label>
+        <input type="checkbox" id="aktif" name="aktif" value="1">
+        <button type="submit">Kaydet</button>
+    </form>
+{% endblock %}
+{% extends 'layout.html' %}
+{% block content %}
+    <h2>Rezervasyon Formu</h2>
+    <form method="post">
+        <label for="ucak_id">Uçak:</label>
+        <select id="ucak_id" name="ucak_id" required>
+            {% for ucak in ucaklar %}
+                <option value="{{ ucak.id }}">{{ ucak.model }} - {{ ucak.marka }}</option>
+            {% endfor %}
+        </select>
+        <label for="lokasyon_id">Lokasyon:</label>
+        <select id="lokasyon_id" name="lokasyon_id" required>
+            {% for lokasyon in lokasyonlar %}
+                <option value="{{ lokasyon.id }}">{{ lokasyon.ulke }} - {{ lokasyon.sehir }} - {{ lokasyon.havaalani }}</option>
+            {% endfor %}
+        </select>
+        <label for="musteri_adi">Müşteri Adı:</label>
+        <input type="text" id="musteri_adi" name="musteri_adi" required>
+        <label for="musteri_soyadi">Müşteri Soyadı:</label>
+        <input type="text" id="musteri_soyadi" name="musteri_soyadi" required>
+        <label for="koltuk_no">Koltuk No:</label>
+        <input type="text" id="koltuk_no" name="koltuk_no" required>
+        <button type="submit">Rezervasyon Yap</button>
+    </form>
+    <h3>Mevcut Rezervasyonlar</h3>
+    <ul>
+        {% for rezervasyon in rezervasyonlar %}
+            <li>
+                {{ rezervasyon.musteri_adi }} {{ rezervasyon.musteri_soyadi }} - Koltuk No: {{ rezervasyon.koltuk_no }}
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
+body {
+    font-family: Arial, sans-serif;
+}
+header {
+    background-color: #f8f9fa;
+    padding: 1em;
+}
+header nav a {
+    margin: 0 1em;
+    text-decoration: none;
+    color: #007bff;
+}
+header nav a:hover {
+    text-decoration: underline;
+}
+main {
+    padding: 1em;
+}
+form {
+    margin: 1em 0;
+}
+label {
+    display: block;
+    margin: 0.5em 0 0.2em;
+}
+input, select, button {
+    display: block;
+    margin-bottom: 1em;
+}
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5em 1em;
+    border: none;
+    cursor: pointer;
+}
+button:hover {
+    background-color: #0056b3;
+}
+document.addEventListener('DOMContentLoaded', function() {
+    // Koltuklar için renk değiştirme ve müşteri bilgilerini gösterme
+    // Bu bölüm rezervasyon sayfasında koltukların durumunu güncellemek için kullanılacak
+});
